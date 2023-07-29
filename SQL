@@ -1,0 +1,170 @@
+1 Show all usernames in the next format
+https://gyazo.com/41b95749c9eb8f0dc9d59b8406207133
+
+SELECT 'First Name: '+ FirstName + '; ' + 'Last Name: '+ LastName + '; ' + 'Full Name: '+ FirstName + ' ' + LastName
+FROM dbo.[User]
+
+2 Order videos by Views count and show videos and weren’t removed first
+a. First should go videos with the highest views count that are not removed
+b. Then videos with less views that are not removed
+c. Then videos with the highest views count that are deleted
+d. Then videos with the lowest views count that are deleted
+https://gyazo.com/ab8b9c75eaa4f97541f4b8f86cafa1f5
+
+SELECT * FROM dbo.Video
+ORDER BY IsDeleted, Views DESC
+
+3 Find all deleted videos
+
+SELECT * FROM dbo.Video
+WHERE IsDeleted=1
+
+4 Find all videos with 3 or more ‘likes’ and 0 ‘dislikes’ that are not deleted
+
+SELECT * FROM dbo.Video
+WHERE Likes >= 3 AND Dislikes = 0 AND IsDeleted = 0
+
+5 Find all users and their channels.
+Find all users and their channels. If user doesn’t have channel, we still want to see the user in the results list. If the user has more than one channel, we want to see multiple rows for every channel. Order the results by channel name.
+https://gyazo.com/668c50055c935be57e93b6bbaa2ae94d
+
+SELECT FirstName, lastName, Title, Description 
+FROM dbo.Channel
+INNER JOIN  dbo.[User]
+ON Channel.UserId = [User].ID
+ORDER BY Title ASC
+
+6 Find all users and show their videos.
+Find all users and show their videos. Don’t show users that don’t have any videos in their channels. Order them by views count starting from he highest.
+https://gyazo.com/73e48220604b2a149d46002a7b78e4f1
+
+SELECT FirstName, LastName, Channel.Title, Video.Title, Views
+FROM dbo.Channel
+INNER JOIN dbo.Video
+ON Video.ChannelId = Channel.Id
+INNER JOIN dbo.[User]
+ON Channel.UserId = [User].Id
+ORDER BY Views DESC
+
+7 Calculate number of items inside all playlists in the system
+https://gyazo.com/34350040c556363076649bc93911f34a
+
+SELECT COUNT (PlaylistItem.Id)
+FROM PlaylistItem
+
+8 Calculate number of items inside of all playlists of user with name “Test Test”
+https://gyazo.com/28cadc6804d0bbd516d20fd6e83fc534
+
+SELECT COUNT (PlaylistItem.VideoId)
+FROM  PlaylistItem
+INNER JOIN Playlist
+ON PlaylistItem.PlaylistId = Playlist.Id 
+INNER JOIN Users
+ON Users.Id = Playlist.UserId
+WHERE Users.LastName = 'Test' AND Users.FirstName = 'Test'
+
+9 Calculate count of videos for every channel
+https://gyazo.com/e33f5e77f765a0fc6b35749413ae01bc
+
+SELECT Channel.Title, COUNT (Video.Title)
+FROM Video
+INNER JOIN Channel
+ON Video.ChannelId = Channel.Id
+GROUP BY Channel.Title
+
+10 Calculate count of videos for every not deleted user and show users’ full name
+https://gyazo.com/ccbe8881bd7bbc3614683702d62dd62a
+
+SELECT Users.FirstName + ' ' + Users.LastName, COUNT(Video.Id)
+FROM Users
+INNER JOIN Channel
+ON Channel.UserId = Users.Id
+INNER JOIN Video
+ON Video.ChannelId = Channel.Id
+WHERE Users.IsDeleted = 0
+GROUP BY  FirstName, LastName
+
+11 Calculate count of likes for every video in the system
+https://gyazo.com/3bd288a97379b98d829346ae198e1fdd
+Notes: [dbo].[Rating] is 1 means ‘like’
+[dbo].[Rating] is 2 means ‘dislike’
+We can not use Likes and Dislikes columns in [Video] table in this ticket for calculation
+
+SELECT Video.Title, SUM(CASE WHEN Rating = 1 THEN Rating ELSE 0 END ) AS Likes
+FROM Rating
+FULL JOIN Video
+ON Video.Id = Rating.VideoId
+GROUP BY Title, Rating
+ORDER BY Likes DESC 
+
+13 Show users who have exactly one channel (no more, no less)
+https://gyazo.com/c3fdb30315e26961c4891f2d1d262e38
+
+SELECT Users.FirstName + ' ' + Users.LastName
+FROM Users
+INNER JOIN Channel
+ON Channel.UserId = Users.Id
+GROUP BY FirstName, LastName
+HAVING COUNT(*) = 1
+
+14 Calculate length of every comment in the system
+https://gyazo.com/4c39a3332dfa04995f502cf4c7d390e8
+
+SELECT Comment.[Text], LEN(Comment.[Text])
+FROM Comment
+GROUP BY [Text]
+
+15 Show only those comments which length is shorter than 35 symbols, show users and videos which they belong to and order them from longer to shorter
+https://gyazo.com/d2be62f6fd5bfb4ef21b42fc3bc44be2
+
+SELECT Comment.[Text], Users.FirstName + ' ' + Users.LastName AS [Full Name],
+Video.Title, LEN(Comment.[Text]) AS Namber
+FROM Comment
+INNER JOIN Users
+ON Users.Id = Comment.UserId
+INNER JOIN Video
+ON Video.Id = Comment.VideoId
+WHERE LEN(Comment.[Text]) < 35
+ORDER BY Namber DESC
+
+16 For every row from Task #15 show how many likes every video has (query from Task #11)
+https://gyazo.com/42aa32b81a4203b2bd3af3dfc6dc0899
+
+SELECT Comment.[Text], Users.FirstName, + ' ' + Users.LastName AS [Full Name],
+Video.Title, LEN(Comment.Text) AS Nam, 
+SUM( CASE WHEN Rating = 1 THEN Rating ELSE 0 END ) AS Likes 
+FROM Comment
+INNER JOIN dbo.Users
+ON Users.Id = Comment.UserId
+INNER JOIN Video
+ON Video.Id = Comment.VideoId
+FULL OUTER JOIN Rating
+ON Rating.VideoId = Video.Id
+WHERE LEN (Comment.Text) < 35
+GROUP BY [Text], FirstName, LastName, Title
+ORDER BY Nam DESC, Likes DESC
+
+17 For query from Task #13, add the name of the channel to the results
+https://gyazo.com/e63cde99fd829f8811982e0a375cab7f
+
+SELECT Users.FirstName + ' ' + Users.LastName AS [Full Name], Channel.Title
+FROM Users
+INNER JOIN Channel
+ON Users.Id = Channel.UserId
+GROUP BY FirstName, LastName, Title
+HAVING COUNT(Channel.UserId) = 1
+
+18 Show User Names, Video Titles and Channel Titles in the same query like on the screenshot. Also order the items by their ids
+https://gyazo.com/a49b04b353c01794d83b121a3ebac3b9
+
+SSELECT Video.Id, Video.Title AS [Name], 'Video' AS Tipe
+FROM Video
+UNION
+SELECT Users.Id , Users.FirstName + ' ' + Users.LastName , 'User'
+FROM Users
+UNION
+SELECT Channel.Id , Channel.Title , 'Channel' 
+FROM Channel
+ORDER BY Id ASC
+
+
